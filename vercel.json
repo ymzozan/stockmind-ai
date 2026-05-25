@@ -2,5 +2,16 @@
   "buildCommand": "npx prisma generate && npm run build",
   "installCommand": "npm install --include=dev",
   "framework": "remix",
-  "regions": ["iad1"]
+  "regions": ["iad1"],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "Content-Security-Policy",
+          "value": "frame-ancestors https://admin.shopify.com https://*.myshopify.com https://*.spin.dev;"
+        }
+      ]
+    }
+  ]
 }
