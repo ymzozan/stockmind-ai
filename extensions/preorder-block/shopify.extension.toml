@@ -1,0 +1,10 @@
+api_version = "2024-10"
+
+[[extensions]]
+type = "ui_extension"
+name = "Pre-Order Button Block"
+handle = "preorder-block"
+
+[[extensions.targeting]]
+module = "./src/PreOrderBlock.jsx"
+target = "purchase.product-details.render-before"

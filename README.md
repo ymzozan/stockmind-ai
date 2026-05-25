@@ -1,51 +1,61 @@
 # StockMind AI
 
-**Back in Stock Alerts · Waitlist · Preorders · AI Demand Forecasting**
-
-A Shopify embedded app that turns out-of-stock products into revenue opportunities. Collect waitlists, send automatic restock alerts, enable preorders, and use AI to predict demand and recommend smart restocking actions.
-
-Built for Shopify. React Router v7 · Polaris · TypeScript · Prisma · PostgreSQL.
-
----
-
-## What it does
-
-When a product goes out of stock, StockMind AI:
-
-1. Shows a "Notify me" widget on the product page
-2. Collects customer emails (and optional phone numbers)
-3. Automatically sends alerts when stock is restored
-4. Optionally enables preorders with configurable messaging
-5. Calculates AI demand scores and restock recommendations based on waitlist velocity
+Back-in-stock alerts, waitlists, pre-orders, and AI-powered demand forecasting for Shopify merchants.
 
 ## Features
 
-| Feature | Free | Starter | Growth | Pro |
-|---------|------|---------|--------|-----|
-| Waitlist collection | ✓ | ✓ | ✓ | ✓ |
-| Back in stock alerts | 30/mo | 1,000/mo | 5,000/mo | Unlimited |
-| Preorders | — | — | ✓ | ✓ |
-| AI demand score | — | — | ✓ | ✓ |
-| AI restock recommendations | — | — | — | ✓ |
-| AI message generator | — | — | ✓ | ✓ |
-| Remove branding | — | — | — | ✓ |
+- **Back-in-stock alerts** — customers join a waitlist when a product is out of stock, get notified automatically when inventory is replenished
+- **Pre-orders** — sell products before they're in stock with configurable messaging, badges, and expected ship dates
+- **Waitlist management** — merchant dashboard showing subscribers per product/variant, notification history
+- **Checkout UI extension** — "Notify Me" widget renders directly in checkout / product page
+- **Global settings** — configure email sender name, subject lines, low-stock threshold per shop
+- **AI demand forecasting** — predict restocking needs based on waitlist size and sales velocity (roadmap)
 
-## Tech stack
+## Stack
 
 | Layer | Technology |
 |-------|-----------|
-| Framework | React Router v7 (Shopify app template) |
-| Shopify | @shopify/shopify-app-react-router, App Bridge, Polaris |
-| API | Shopify GraphQL Admin API |
-| Database | PostgreSQL via Prisma |
-| Email | Resend |
-| AI | OpenAI GPT-4o (demand scoring + message generation) |
-| Storefront | Theme App Extension |
+| Framework | [Remix](https://remix.run) |
+| Shopify Integration | [@shopify/shopify-app-remix](https://github.com/Shopify/shopify-app-js) |
+| UI | [Polaris](https://polaris.shopify.com) + App Bridge |
+| Database | PostgreSQL via [Prisma](https://prisma.io) |
+| Extensions | Shopify Checkout UI Extensions |
 
-## Status
+## Webhooks handled
 
-Active development. MVP targeting Shopify App Store submission.
+| Topic | Purpose |
+|-------|---------|
+| `orders/create` | Capture pre-orders from new orders |
+| `orders/fulfilled` | Mark pre-orders as shipped |
+| `orders/cancelled` | Mark pre-orders as cancelled |
+| `products/update` | Disable settings when product is archived |
+| `inventory_levels/update` | Trigger back-in-stock notifications |
+| `app/uninstalled` | Clean up all shop data |
+
+## Local development
+
+```bash
+cp .env.example .env
+# fill in SHOPIFY_API_KEY, SHOPIFY_API_SECRET, DATABASE_URL
+
+npm install
+npx prisma migrate dev
+shopify app dev
+```
+
+## Environment variables
+
+| Variable | Description |
+|----------|-------------|
+| `SHOPIFY_API_KEY` | App API key from Partner Dashboard |
+| `SHOPIFY_API_SECRET` | App API secret |
+| `SHOPIFY_APP_URL` | Public URL (ngrok in dev) |
+| `DATABASE_URL` | PostgreSQL connection string |
+
+## Deployment
+
+Deploy to Railway, Fly.io, or any Node.js host. Set env vars, run `npx prisma migrate deploy`, then register the app URL in the Shopify Partner dashboard.
 
 ---
 
-*StockMind AI is a product by [codeimo](https://codeimo.com)*
+Built by [codeimo](https://codeimo.com)

@@ -1,0 +1,50 @@
+# Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
+
+name = "StockMind AI"
+client_id = "{{ SHOPIFY_API_KEY }}"
+application_url = "{{ APP_URL }}"
+embedded = true
+
+[build]
+automatically_update_urls_on_dev = true
+dev_store_url = ""
+
+[access_scopes]
+scopes = "write_products,read_orders,write_orders,read_inventory,write_inventory,read_customers,write_customers"
+
+[auth]
+redirect_urls = [
+  "{{ APP_URL }}/auth/callback",
+  "{{ APP_URL }}/auth/shopify/callback",
+  "{{ APP_URL }}/api/auth/callback",
+]
+
+[webhooks]
+api_version = "2025-01"
+
+  [[webhooks.subscriptions]]
+  topics = ["orders/create"]
+  uri = "/webhooks"
+
+  [[webhooks.subscriptions]]
+  topics = ["orders/fulfilled"]
+  uri = "/webhooks"
+
+  [[webhooks.subscriptions]]
+  topics = ["orders/cancelled"]
+  uri = "/webhooks"
+
+  [[webhooks.subscriptions]]
+  topics = ["products/update"]
+  uri = "/webhooks"
+
+  [[webhooks.subscriptions]]
+  topics = ["inventory_levels/update"]
+  uri = "/webhooks"
+
+  [[webhooks.subscriptions]]
+  topics = ["app/uninstalled"]
+  uri = "/webhooks"
+
+[pos]
+embedded = false

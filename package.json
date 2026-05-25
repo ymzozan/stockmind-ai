@@ -1,0 +1,50 @@
+{
+  "name": "stockmind-ai",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "remix vite:build",
+    "dev": "shopify app dev",
+    "lint": "eslint --cache --cache-location ./node_modules/.cache/eslint .",
+    "setup": "prisma generate && prisma migrate deploy",
+    "config:link": "shopify app config link",
+    "generate": "shopify app generate",
+    "deploy": "shopify app deploy",
+    "config:use": "shopify app config use",
+    "env": "shopify app env",
+    "start": "remix-serve ./build/server/index.js",
+    "docker-start": "npm run setup && npm run start",
+    "prisma": "prisma",
+    "graphql-codegen": "graphql-codegen"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=18.20.0"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.19.1",
+    "@remix-run/node": "^2.13.1",
+    "@remix-run/react": "^2.13.1",
+    "@remix-run/serve": "^2.13.1",
+    "@shopify/app-bridge-react": "^4.1.6",
+    "@shopify/polaris": "^13.9.2",
+    "@shopify/shopify-app-remix": "^3.4.0",
+    "@shopify/shopify-app-session-storage-prisma": "^5.1.3",
+    "isbot": "^5.1.17",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "vite-tsconfig-paths": "^5.0.1"
+  },
+  "devDependencies": {
+    "@graphql-codegen/cli": "5.0.0",
+    "@remix-run/dev": "^2.13.1",
+    "@types/react": "^18.2.31",
+    "@types/react-dom": "^18.2.14",
+    "eslint": "^8.42.0",
+    "eslint-config-prettier": "^9.0.0",
+    "prettier": "^3.0.3",
+    "prisma": "^5.19.1",
+    "typescript": "^5.2.2",
+    "vite": "^5.1.0"
+  }
+}

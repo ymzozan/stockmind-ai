@@ -1,0 +1,99 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Session {
+  id            String    @id
+  shop          String
+  state         String
+  isOnline      Boolean   @default(false)
+  scope         String?
+  expires       DateTime?
+  accessToken   String
+  userId        BigInt?
+  firstName     String?
+  lastName      String?
+  email         String?
+  accountOwner  Boolean   @default(false)
+  locale        String?
+  collaborator  Boolean?  @default(false)
+  emailVerified Boolean?  @default(false)
+}
+
+// Back-in-stock / waitlist subscribers
+model WaitlistSubscriber {
+  id          String   @id @default(cuid())
+  shop        String
+  productId   String
+  variantId   String
+  email       String
+  firstName   String?
+  notified    Boolean  @default(false)
+  notifiedAt  DateTime?
+  createdAt   DateTime @default(now())
+
+  @@unique([shop, productId, variantId, email])
+  @@index([shop, productId, variantId, notified])
+}
+
+// Pre-order configuration per product/variant
+model PreOrderSetting {
+  id               String    @id @default(cuid())
+  shop             String
+  productId        String
+  variantId        String?
+  enabled          Boolean   @default(true)
+  badgeText        String    @default("Pre-Order")
+  buttonText       String    @default("Pre-Order Now")
+  message          String    @default("Available for pre-order. Ships in 2-3 weeks.")
+  limitQuantity    Boolean   @default(false)
+  maxQuantity      Int       @default(0)
+  expectedShipDate DateTime?
+  discountPercent  Int       @default(0)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@unique([shop, productId, variantId])
+}
+
+// Pre-orders captured from orders
+model PreOrder {
+  id               String    @id @default(cuid())
+  shop             String
+  orderId          String
+  orderNumber      Int
+  productId        String
+  variantId        String
+  productTitle     String
+  variantTitle     String?
+  quantity         Int
+  price            String
+  customerEmail    String
+  customerName     String
+  status           String    @default("PENDING")
+  expectedShipDate DateTime?
+  notifiedAt       DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@unique([shop, orderId])
+  @@index([shop])
+}
+
+// Global settings per shop
+model ShopSettings {
+  id                    String   @id @default(cuid())
+  shop                  String   @unique
+  emailFromName         String   @default("StockMind AI")
+  emailSubjectBIS       String   @default("{{product}} is back in stock!")
+  emailSubjectPreOrder  String   @default("Your pre-order is confirmed")
+  notifyLowStock        Boolean  @default(false)
+  lowStockThreshold     Int      @default(5)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+}
