@@ -2,7 +2,7 @@
 
 name = "Mind Preorder, Back In Stock"
 client_id = "c0eb3b492c6061fc1855fdb869dc33f5"
-application_url = "{{ APP_URL }}"
+application_url = "https://stockmind-ai-jade.vercel.app"
 embedded = true
 
 [build]
@@ -14,25 +14,13 @@ scopes = "write_products,read_orders,write_orders,read_inventory,write_inventory
 
 [auth]
 redirect_urls = [
-  "{{ APP_URL }}/auth/callback",
-  "{{ APP_URL }}/auth/shopify/callback",
-  "{{ APP_URL }}/api/auth/callback",
+  "https://stockmind-ai-jade.vercel.app/auth/callback",
+  "https://stockmind-ai-jade.vercel.app/auth/shopify/callback",
+  "https://stockmind-ai-jade.vercel.app/api/auth/callback",
 ]
 
 [webhooks]
 api_version = "2025-01"
-
-  [[webhooks.subscriptions]]
-  topics = ["orders/create"]
-  uri = "/webhooks"
-
-  [[webhooks.subscriptions]]
-  topics = ["orders/fulfilled"]
-  uri = "/webhooks"
-
-  [[webhooks.subscriptions]]
-  topics = ["orders/cancelled"]
-  uri = "/webhooks"
 
   [[webhooks.subscriptions]]
   topics = ["products/update"]
