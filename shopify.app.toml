@@ -1,7 +1,7 @@
 # Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
 
-name = "StockMind AI"
-client_id = "{{ SHOPIFY_API_KEY }}"
+name = "Mind Preorder, Back In Stock"
+client_id = "c0eb3b492c6061fc1855fdb869dc33f5"
 application_url = "{{ APP_URL }}"
 embedded = true
 
