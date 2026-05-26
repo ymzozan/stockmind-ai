@@ -1,5 +1,5 @@
 {
-  "buildCommand": "npx prisma generate && npm run build",
+  "buildCommand": "npx prisma generate && npx prisma db push --accept-data-loss && npm run build",
   "installCommand": "npm install --include=dev",
   "framework": "remix",
   "regions": ["iad1"],
