@@ -89,6 +89,7 @@ export default function Dashboard() {
                   o.quantity,
                   o.status,
                 ])}
+                accessibilityLabel="Recent pre-orders"
               />
             )}
           </BlockStack>

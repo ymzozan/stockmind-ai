@@ -23,6 +23,10 @@ redirect_urls = [
 api_version = "2025-01"
 
   [[webhooks.subscriptions]]
+  topics = ["orders/create", "orders/fulfilled", "orders/cancelled"]
+  uri = "/webhooks"
+
+  [[webhooks.subscriptions]]
   topics = ["products/update"]
   uri = "/webhooks"
 
@@ -32,6 +36,11 @@ api_version = "2025-01"
 
   [[webhooks.subscriptions]]
   topics = ["app/uninstalled"]
+  uri = "/webhooks"
+
+  # GDPR mandatory — required for App Store approval
+  [[webhooks.subscriptions]]
+  topics = ["customers/data_request", "customers/redact", "shop/redact"]
   uri = "/webhooks"
 
 [pos]

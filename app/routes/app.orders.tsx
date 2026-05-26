@@ -88,6 +88,7 @@ export default function OrdersPage() {
           <DataTable
             columnContentTypes={["text", "text", "text", "numeric", "text", "text"]}
             headings={["Order #", "Customer", "Product", "Qty", "Total", "Status"]}
+            accessibilityLabel="Pre-orders list"
             rows={orders.map((order) => [
               `#${order.orderNumber}`,
               order.customerName,

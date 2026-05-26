@@ -6,6 +6,33 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   const { topic, shop, session, admin, payload } =
     await authenticate.webhook(request);
 
+  // GDPR mandatory webhooks — no admin session, must return 200
+  switch (topic) {
+    case "CUSTOMERS_DATA_REQUEST":
+      // In production: look up and email customer data to shop owner
+      return new Response(null, { status: 200 });
+
+    case "CUSTOMERS_REDACT": {
+      const body = payload as any;
+      const email = body?.customer?.email;
+      if (email && shop) {
+        await prisma.waitlistSubscriber.deleteMany({ where: { shop, email } });
+      }
+      return new Response(null, { status: 200 });
+    }
+
+    case "SHOP_REDACT": {
+      await Promise.all([
+        prisma.waitlistSubscriber.deleteMany({ where: { shop } }),
+        prisma.preOrderSetting.deleteMany({ where: { shop } }),
+        prisma.preOrder.deleteMany({ where: { shop } }),
+        prisma.shopSettings.deleteMany({ where: { shop } }),
+        prisma.session.deleteMany({ where: { shop } }),
+      ]);
+      return new Response(null, { status: 200 });
+    }
+  }
+
   if (!admin) {
     throw new Response("Unauthorized", { status: 401 });
   }
@@ -25,9 +52,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
         if (setting) {
           await prisma.preOrder.upsert({
-            where: {
-              shop_orderId: { shop, orderId: String(order.id) },
-            },
+            where: { shop_orderId: { shop, orderId: String(order.id) } },
             create: {
               shop,
               orderId: String(order.id),
@@ -85,33 +110,29 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       if (available <= 0) break;
 
       const variantGid = `gid://shopify/ProductVariant/${inv.inventory_item_id}`;
-      const subscribers = await prisma.waitlistSubscriber.findMany({
+      await prisma.waitlistSubscriber.updateMany({
         where: { shop, variantId: variantGid, notified: false },
+        data: { notified: true, notifiedAt: new Date() },
       });
-
-      if (subscribers.length > 0) {
-        // TODO: send back-in-stock email via Shopify Email or SendGrid
-        await prisma.waitlistSubscriber.updateMany({
-          where: { shop, variantId: variantGid, notified: false },
-          data: { notified: true, notifiedAt: new Date() },
-        });
-      }
       break;
     }
 
     case "APP_UNINSTALLED": {
       if (session) {
-        await prisma.session.deleteMany({ where: { shop } });
-        await prisma.waitlistSubscriber.deleteMany({ where: { shop } });
-        await prisma.preOrderSetting.deleteMany({ where: { shop } });
-        await prisma.shopSettings.deleteMany({ where: { shop } });
+        await Promise.all([
+          prisma.session.deleteMany({ where: { shop } }),
+          prisma.waitlistSubscriber.deleteMany({ where: { shop } }),
+          prisma.preOrderSetting.deleteMany({ where: { shop } }),
+          prisma.shopSettings.deleteMany({ where: { shop } }),
+        ]);
       }
       break;
     }
 
     default:
-      throw new Response("Unhandled webhook topic", { status: 404 });
+      // Return 200 for any unknown topics to avoid Shopify retries
+      return new Response(null, { status: 200 });
   }
 
-  throw new Response(null, { status: 200 });
+  return new Response(null, { status: 200 });
 };
