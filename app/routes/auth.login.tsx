@@ -1,4 +1,5 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
+import { boundary } from "@shopify/shopify-app-remix/server";
 import { login } from "../shopify.server";
 
 // OAuth redirects inside Shopify admin iframe fail because admin.shopify.com
@@ -43,3 +44,5 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 export const action = async ({ request }: ActionFunctionArgs) => {
   return handleLogin(request);
 };
+
+export const headers = boundary.headers;
