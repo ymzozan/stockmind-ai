@@ -9,7 +9,13 @@ import { authenticate } from "../shopify.server";
 export const links = () => [{ rel: "stylesheet", href: polarisStyles }];
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  await authenticate.admin(request);
+  try {
+    await authenticate.admin(request);
+  } catch (error) {
+    if (error instanceof Response) throw error;
+    console.error("[app/loader] authenticate.admin threw:", error);
+    throw error;
+  }
   return { apiKey: process.env.SHOPIFY_API_KEY || "" };
 };
 
