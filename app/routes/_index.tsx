@@ -1,5 +1,6 @@
 import type { LoaderFunctionArgs } from "@remix-run/node";
 import { redirect } from "@remix-run/node";
+import { authenticate } from "../shopify.server";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const url = new URL(request.url);
@@ -7,6 +8,9 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const host = url.searchParams.get("host");
 
   if (shop && host) {
+    // authenticate.admin handles first install (HMAC validation + OAuth) and
+    // session validation. Must run before redirect so params aren't stripped.
+    await authenticate.admin(request);
     return redirect(`/app?shop=${shop}&host=${host}`);
   }
 
