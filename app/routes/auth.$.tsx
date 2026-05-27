@@ -1,14 +1,14 @@
 import type { LoaderFunctionArgs } from "@remix-run/node";
 import { authenticate, boundary } from "../shopify.server";
 
-function exitIframeHtml(installUrl: string) {
+function exitIframeHtml(url: string) {
   return new Response(
     `<!DOCTYPE html>
 <html><head><title>Redirecting…</title></head>
 <body>
 <script>
 (function(){
-  var url=${JSON.stringify(installUrl)};
+  var url=${JSON.stringify(url)};
   try{window.parent.postMessage(
     JSON.stringify({message:"Shopify.API.App.redirect",data:{location:url}}),
     "https://admin.shopify.com"
@@ -33,19 +33,15 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     await authenticate.admin(request);
     return null;
   } catch (err) {
-    if (err instanceof Response) {
+    if (err instanceof Response && err.status === 302) {
       const location = err.headers.get("Location") ?? "";
-      // Intercept any redirect targeting admin.shopify.com — navigating the
-      // iframe there causes X-Frame-Options: deny. Serve exit-iframe HTML so
-      // the parent frame navigates instead.
-      if (
-        err.status === 302 &&
-        location.includes("admin.shopify.com")
-      ) {
+      const appUrl = process.env.SHOPIFY_APP_URL || "";
+      // Intercept any redirect to an external domain (admin.shopify.com,
+      // accounts.shopify.com, etc.). Redirects back to our own domain
+      // (token-exchange bounces) are re-thrown so Remix follows them normally.
+      if (location.startsWith("https://") && !location.startsWith(appUrl)) {
         return exitIframeHtml(location);
       }
-      // Pass all other Response throws (token-exchange bounces, etc.) through
-      throw err;
     }
     throw err;
   }

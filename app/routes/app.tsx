@@ -53,17 +53,17 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
     // Any 4xx from authenticate.admin means auth failed — clear session and
     // redirect to install rather than letting boundary.error navigate the iframe.
-    if (error instanceof Response && error.status >= 400) {
-      if (shop && !reqUrl.searchParams.get("cleared")) {
+    // Any non-redirect error with shop context → clear session then exit iframe.
+    // This prevents boundary.error from navigating the iframe to admin.shopify.com.
+    if (shop && apiKey) {
+      if (!reqUrl.searchParams.get("cleared")) {
         await prisma.session.deleteMany({ where: { shop } }).catch(() => {});
         reqUrl.searchParams.set("cleared", "1");
         throw redirect(reqUrl.toString());
       }
-      if (shop && apiKey) {
-        const slug = shop.replace(".myshopify.com", "");
-        const installUrl = `https://admin.shopify.com/store/${slug}/oauth/install?client_id=${apiKey}`;
-        return exitIframeResponse(installUrl);
-      }
+      const slug = shop.replace(".myshopify.com", "");
+      const installUrl = `https://admin.shopify.com/store/${slug}/oauth/install?client_id=${apiKey}`;
+      return exitIframeResponse(installUrl);
     }
 
     throw error;
