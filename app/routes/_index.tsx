@@ -8,9 +8,15 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const host = url.searchParams.get("host");
 
   if (shop && host) {
-    // authenticate.admin handles first install (HMAC validation + OAuth) and
-    // session validation. Must run before redirect so params aren't stripped.
-    await authenticate.admin(request);
+    try {
+      await authenticate.admin(request);
+    } catch (error) {
+      if (error instanceof Response && error.status < 400) throw error;
+      // Invalid token — clear and restart OAuth
+      const { default: prisma } = await import("../db.server");
+      await prisma.session.deleteMany({ where: { shop } }).catch(() => {});
+      return redirect(`/auth?shop=${shop}`);
+    }
     return redirect(`/app?shop=${shop}&host=${host}`);
   }
 
