@@ -15,11 +15,12 @@ import {
   ContextualSaveBar,
 } from "@shopify/polaris";
 import { useState, useCallback } from "react";
-import { authenticate } from "../shopify.server";
+import { withShopifyAuth } from "../shopify-auth.server";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  await authenticate.admin(request);
-  return json({
+  const auth = await withShopifyAuth(request);
+  if (!auth) return json({ needsReauth: true as const, defaultButtonText: "", defaultBadgeText: "", defaultMessage: "", emailNotifications: false });
+  return json({ needsReauth: false as const,
     defaultButtonText: "Pre-Order Now",
     defaultBadgeText: "Pre-Order",
     defaultMessage: "This item is available for pre-order. Ships in 2-3 weeks.",
@@ -28,8 +29,8 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 };
 
 export const action = async ({ request }: ActionFunctionArgs) => {
-  await authenticate.admin(request);
-  // Save global settings logic here
+  const auth = await withShopifyAuth(request);
+  if (!auth) return json({ ok: false, saved: false });
   return json({ ok: true, saved: true });
 };
 
@@ -45,6 +46,8 @@ export default function SettingsPage() {
     defaultBadgeText: data.defaultBadgeText,
     defaultMessage: data.defaultMessage,
   });
+
+  if (data.needsReauth) return null;
 
   const handleChange = useCallback((field: string) => (value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
