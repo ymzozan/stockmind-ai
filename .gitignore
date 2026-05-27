@@ -8,3 +8,8 @@ build
 prisma/migrations/dev.db
 dev.sqlite
 .vercel
+.env.local
+.env.production
+.env.*
+!.env.example
+.react-router/

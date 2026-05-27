@@ -1,7 +1,7 @@
 {
   "buildCommand": "npx prisma generate && npx prisma db push --accept-data-loss && npm run build",
   "installCommand": "npm install --include=dev",
-  "framework": "remix",
+  "framework": "react-router",
   "regions": ["iad1"],
   "headers": [
     {
