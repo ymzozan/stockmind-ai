@@ -29,8 +29,18 @@ function topFrameRedirect(url: string) {
 }
 
 async function handleLogin(request: Request) {
-  const response = await login(request);
-  if (response instanceof Response && response.status === 302) {
+  let response: Response;
+  try {
+    response = await login(request);
+  } catch (err) {
+    // v3.8+ shopify-app-remix throws the redirect instead of returning it
+    if (err instanceof Response && err.status === 302) {
+      response = err;
+    } else {
+      throw err;
+    }
+  }
+  if (response.status === 302) {
     const location = response.headers.get("Location");
     if (location) return topFrameRedirect(location);
   }
