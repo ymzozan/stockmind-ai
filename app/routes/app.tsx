@@ -10,7 +10,6 @@ import { useEffect } from "react";
 
 export const links = () => [{ rel: "stylesheet", href: polarisStyles }];
 
-// App Bridge v4 uses web components — declare for TypeScript
 declare global {
   namespace JSX {
     interface IntrinsicElements {
@@ -22,73 +21,73 @@ declare global {
   }
 }
 
-function exitIframeResponse(installUrl: string): Response {
-  const html = `<!DOCTYPE html>
-<html><head><title>Redirecting…</title></head>
-<body>
-<script>
-(function(){
-  var url=${JSON.stringify(installUrl)};
-  try{window.parent.postMessage(
-    JSON.stringify({message:"Shopify.API.App.redirect",data:{location:url}}),
-    "https://admin.shopify.com"
-  );}catch(e){}
-  try{window.top.location.href=url;}catch(e){}
-})();
-</script>
-</body></html>`;
-  return new Response(html, {
-    status: 200,
-    headers: {
-      "Content-Type": "text/html",
-      "Content-Security-Policy":
-        "frame-ancestors https://admin.shopify.com https://*.myshopify.com https://*.spin.dev;",
-    },
-  });
+function buildInstallUrl(shop: string, apiKey: string) {
+  const slug = shop.replace(".myshopify.com", "");
+  return `https://admin.shopify.com/store/${slug}/oauth/install?client_id=${apiKey}`;
 }
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
+  const reqUrl = new URL(request.url);
+  const shop = reqUrl.searchParams.get("shop") ?? "";
+  const apiKey = process.env.SHOPIFY_API_KEY ?? "";
+
   try {
     await authenticate.admin(request);
-    return { apiKey: process.env.SHOPIFY_API_KEY || "" };
+    return { apiKey, exitIframeUrl: null as string | null };
   } catch (error) {
-    // Re-throw 3xx — Remix handles redirects natively (token-exchange bounces etc.)
-    if (error instanceof Response && error.status < 400) throw error;
+    // 3xx redirect — check destination before re-throwing
+    if (error instanceof Response && error.status < 400) {
+      const location = error.headers.get("Location") ?? "";
+      // Bounces back to our own domain (token-exchange): let React Router follow
+      if (!location.includes("admin.shopify.com") && !location.includes("accounts.shopify.com")) {
+        throw error;
+      }
+      // Shopify OAuth redirect: navigate PARENT frame, not the iframe
+      if (shop && apiKey) return { apiKey, exitIframeUrl: location };
+    }
 
-    const reqUrl = new URL(request.url);
-    const shop = reqUrl.searchParams.get("shop");
-    const apiKey = process.env.SHOPIFY_API_KEY || "";
-
-    // Any non-redirect error when we have shop context: clear session once,
-    // then serve exit-iframe HTML so the PARENT frame navigates to OAuth install.
-    // Never let boundary.error reach the client — it uses window.location (iframe).
+    // 4xx / any other error: clear session once, then navigate parent to install
     if (shop && apiKey) {
       if (!reqUrl.searchParams.get("cleared")) {
         await prisma.session.deleteMany({ where: { shop } }).catch(() => {});
         reqUrl.searchParams.set("cleared", "1");
         throw redirect(reqUrl.toString());
       }
-      const slug = shop.replace(".myshopify.com", "");
-      const installUrl = `https://admin.shopify.com/store/${slug}/oauth/install?client_id=${apiKey}`;
-      return exitIframeResponse(installUrl);
+      return { apiKey, exitIframeUrl: buildInstallUrl(shop, apiKey) };
     }
 
     throw error;
   }
 };
 
+function ExitIframe({ url }: { url: string }) {
+  useEffect(() => {
+    try {
+      window.parent.postMessage(
+        JSON.stringify({ message: "Shopify.API.App.redirect", data: { location: url } }),
+        "https://admin.shopify.com"
+      );
+    } catch (_) {}
+    try { window.top!.location.href = url; } catch (_) {}
+  }, [url]);
+  return null;
+}
+
 export default function App() {
-  const { apiKey } = useLoaderData<typeof loader>();
+  const { apiKey, exitIframeUrl } = useLoaderData<typeof loader>();
+
+  // Set apiKey globally so ErrorBoundary can use it if a child route errors
+  if (typeof window !== "undefined") {
+    (window as Record<string, unknown>).__SHOPIFY_API_KEY__ = apiKey;
+  }
+
+  if (exitIframeUrl) return <ExitIframe url={exitIframeUrl} />;
 
   return (
     <AppProvider isEmbeddedApp apiKey={apiKey}>
-      {/* Expose apiKey to the client so ErrorBoundary can build the install URL */}
       <script
-        dangerouslySetInnerHTML={{
-          __html: `window.__SHOPIFY_API_KEY__=${JSON.stringify(apiKey)};`,
-        }}
+        dangerouslySetInnerHTML={{ __html: `window.__SHOPIFY_API_KEY__=${JSON.stringify(apiKey)};` }}
       />
-      {/* App Bridge v4: ui-nav-menu web component (injected/managed by Shopify admin) */}
       <ui-nav-menu>
         <a href="/app" rel="home">Dashboard</a>
         <a href="/app/products">Products</a>
@@ -100,37 +99,25 @@ export default function App() {
   );
 }
 
-// Custom ErrorBoundary that exits the iframe via window.top instead of
-// window.location (which boundary.error uses, causing X-Frame-Options errors).
 export function ErrorBoundary() {
-  useRouteError(); // must call to satisfy Remix's hook rules
+  useRouteError();
 
   useEffect(() => {
     if (typeof window === "undefined") return;
     const shop = new URLSearchParams(window.location.search).get("shop");
-    const apiKey = (window as Record<string, unknown>).__SHOPIFY_API_KEY__ as
-      | string
-      | undefined;
+    const apiKey = (window as Record<string, unknown>).__SHOPIFY_API_KEY__ as string | undefined;
     if (!shop || !apiKey) return;
-    const slug = shop.replace(".myshopify.com", "");
-    const installUrl = `https://admin.shopify.com/store/${slug}/oauth/install?client_id=${apiKey}`;
+    const installUrl = buildInstallUrl(shop, apiKey);
     try {
       window.parent.postMessage(
-        JSON.stringify({
-          message: "Shopify.API.App.redirect",
-          data: { location: installUrl },
-        }),
+        JSON.stringify({ message: "Shopify.API.App.redirect", data: { location: installUrl } }),
         "https://admin.shopify.com"
       );
     } catch (_) {}
-    try {
-      window.top!.location.href = installUrl;
-    } catch (_) {}
+    try { window.top!.location.href = installUrl; } catch (_) {}
   }, []);
 
   return null;
 }
 
-export const headers: HeadersFunction = (headersArgs) => {
-  return boundary.headers(headersArgs);
-};
+export const headers: HeadersFunction = (headersArgs) => boundary.headers(headersArgs);
