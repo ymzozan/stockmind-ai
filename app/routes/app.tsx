@@ -10,26 +10,59 @@ import prisma from "../db.server";
 
 export const links = () => [{ rel: "stylesheet", href: polarisStyles }];
 
+// Returns raw HTML that navigates the TOP FRAME (not the iframe) to the
+// OAuth install page. boundary.error does window.location which loads
+// admin.shopify.com inside the iframe — this bypasses that entirely.
+function exitIframeResponse(installUrl: string): Response {
+  const html = `<!DOCTYPE html>
+<html><head><title>Redirecting…</title></head>
+<body>
+<script>
+(function(){
+  var url=${JSON.stringify(installUrl)};
+  // App Bridge v3 postMessage — parent performs the navigation
+  try{window.parent.postMessage(
+    JSON.stringify({message:"Shopify.API.App.redirect",data:{location:url}}),
+    "https://admin.shopify.com"
+  );}catch(e){}
+  // Direct top-frame navigation fallback
+  try{window.top.location.href=url;}catch(e){}
+})();
+</script>
+</body></html>`;
+  return new Response(html, {
+    status: 200,
+    headers: {
+      "Content-Type": "text/html",
+      "Content-Security-Policy":
+        "frame-ancestors https://admin.shopify.com https://*.myshopify.com https://*.spin.dev;",
+    },
+  });
+}
+
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   try {
     await authenticate.admin(request);
     return { apiKey: process.env.SHOPIFY_API_KEY || "" };
   } catch (error) {
-    // Pass through 3xx redirects from the auth library
     if (error instanceof Response && error.status < 400) throw error;
 
-    // 410 = stale/incompatible session. Clear it so the library serves the
-    // fresh token-exchange bootstrap page on the next request.
+    const reqUrl = new URL(request.url);
+    const shop = reqUrl.searchParams.get("shop");
+    const apiKey = process.env.SHOPIFY_API_KEY || "";
+
     if (error instanceof Response && error.status === 410) {
-      const shop = new URL(request.url).searchParams.get("shop");
-      if (shop) {
+      // First pass: wipe stale session then retry
+      if (shop && !reqUrl.searchParams.get("cleared")) {
         await prisma.session.deleteMany({ where: { shop } }).catch(() => {});
-        // Add a marker so we don't clear again if bootstrap also fails
-        const url = new URL(request.url);
-        if (!url.searchParams.get("cleared")) {
-          url.searchParams.set("cleared", "1");
-          throw redirect(url.toString());
-        }
+        reqUrl.searchParams.set("cleared", "1");
+        throw redirect(reqUrl.toString());
+      }
+      // Second pass: serve exit-iframe HTML — navigates parent to install page
+      if (shop && apiKey) {
+        const slug = shop.replace(".myshopify.com", "");
+        const installUrl = `https://admin.shopify.com/store/${slug}/oauth/install?client_id=${apiKey}`;
+        return exitIframeResponse(installUrl);
       }
     }
 
