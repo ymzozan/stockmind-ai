@@ -51,14 +51,14 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     const shop = reqUrl.searchParams.get("shop");
     const apiKey = process.env.SHOPIFY_API_KEY || "";
 
-    if (error instanceof Response && error.status === 410) {
-      // First pass: wipe stale session then retry
+    // Any 4xx from authenticate.admin means auth failed — clear session and
+    // redirect to install rather than letting boundary.error navigate the iframe.
+    if (error instanceof Response && error.status >= 400) {
       if (shop && !reqUrl.searchParams.get("cleared")) {
         await prisma.session.deleteMany({ where: { shop } }).catch(() => {});
         reqUrl.searchParams.set("cleared", "1");
         throw redirect(reqUrl.toString());
       }
-      // Second pass: serve exit-iframe HTML — navigates parent to install page
       if (shop && apiKey) {
         const slug = shop.replace(".myshopify.com", "");
         const installUrl = `https://admin.shopify.com/store/${slug}/oauth/install?client_id=${apiKey}`;
