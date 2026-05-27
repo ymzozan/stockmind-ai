@@ -54,7 +54,7 @@ shopify app dev
 
 ## Deployment
 
-Deploy to Railway, Fly.io, or any Node.js host. Set env vars, run `npx prisma migrate deploy`, then register the app URL in the Shopify Partner dashboard.
+Deployed on [Vercel](https://vercel.com). Set the required environment variables in the Vercel dashboard, run `npx prisma migrate deploy` against your production database, then run `shopify app deploy` to sync the app config with the Shopify Partner Dashboard.
 
 ---
 
