@@ -20,7 +20,7 @@ redirect_urls = [
 ]
 
 [webhooks]
-api_version = "2025-01"
+api_version = "2025-04"
 
   [[webhooks.subscriptions]]
   topics = ["orders/create", "orders/fulfilled", "orders/cancelled"]
