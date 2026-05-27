@@ -22,11 +22,13 @@ import {
   Thumbnail,
 } from "@shopify/polaris";
 import { useState, useCallback } from "react";
-import { authenticate } from "../shopify.server";
+import { withShopifyAuth } from "../shopify-auth.server";
 import prisma from "../db.server";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  const { admin, session } = await authenticate.admin(request);
+  const auth = await withShopifyAuth(request);
+  if (!auth) return json({ needsReauth: true as const, products: [] as never[], settingsMap: {} as Record<string, never> });
+  const { admin, session } = auth;
   const shop = session.shop;
 
   // Fetch products from Shopify
@@ -57,11 +59,13 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     settings.map((s) => [s.productId, s])
   );
 
-  return json({ products, settingsMap });
+  return json({ needsReauth: false as const, products, settingsMap });
 };
 
 export const action = async ({ request }: ActionFunctionArgs) => {
-  const { session } = await authenticate.admin(request);
+  const auth = await withShopifyAuth(request);
+  if (!auth) return json({ ok: false });
+  const { session } = auth;
   const shop = session.shop;
   const formData = await request.formData();
   const intent = formData.get("intent") as string;
@@ -109,10 +113,11 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 };
 
 export default function ProductsPage() {
-  const { products, settingsMap } = useLoaderData<typeof loader>();
+  const { needsReauth, products, settingsMap } = useLoaderData<typeof loader>();
   const submit = useSubmit();
   const navigation = useNavigation();
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
+  if (needsReauth) return null;
 
   const handleToggle = useCallback((productId: string) => {
     const formData = new FormData();

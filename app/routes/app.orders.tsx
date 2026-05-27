@@ -14,7 +14,7 @@ import {
   InlineStack,
 } from "@shopify/polaris";
 import { useState } from "react";
-import { authenticate } from "../shopify.server";
+import { withShopifyAuth } from "../shopify-auth.server";
 import prisma from "../db.server";
 
 const STATUS_COLORS: Record<string, "info" | "success" | "attention" | "warning"> = {
@@ -25,7 +25,9 @@ const STATUS_COLORS: Record<string, "info" | "success" | "attention" | "warning"
 };
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  const { session } = await authenticate.admin(request);
+  const auth = await withShopifyAuth(request);
+  if (!auth) return json({ needsReauth: true as const, orders: [] as never[], status: "ALL" });
+  const { session } = auth;
   const url = new URL(request.url);
   const status = url.searchParams.get("status") || "ALL";
 
@@ -37,11 +39,13 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     orderBy: { createdAt: "desc" },
   });
 
-  return json({ orders, status });
+  return json({ needsReauth: false as const, orders, status });
 };
 
 export const action = async ({ request }: ActionFunctionArgs) => {
-  const { session } = await authenticate.admin(request);
+  const auth = await withShopifyAuth(request);
+  if (!auth) return json({ ok: false });
+  const { session } = auth;
   const formData = await request.formData();
   const orderId = formData.get("orderId") as string;
   const newStatus = formData.get("status") as string;
@@ -55,8 +59,9 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 };
 
 export default function OrdersPage() {
-  const { orders, status } = useLoaderData<typeof loader>();
+  const { needsReauth, orders, status } = useLoaderData<typeof loader>();
   const submit = useSubmit();
+  if (needsReauth) return null;
 
   const updateStatus = (orderId: string, newStatus: string) => {
     const fd = new FormData();

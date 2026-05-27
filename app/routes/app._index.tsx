@@ -14,11 +14,15 @@ import {
   Button,
   Banner,
 } from "@shopify/polaris";
-import { authenticate } from "../shopify.server";
+import { withShopifyAuth } from "../shopify-auth.server";
 import prisma from "../db.server";
 
+const EMPTY = { needsReauth: true as const, stats: null, recentOrders: [] as never[] };
+
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  const { session } = await authenticate.admin(request);
+  const auth = await withShopifyAuth(request);
+  if (!auth) return json(EMPTY);
+  const { session } = auth;
   const shop = session.shop;
 
   const [totalSettings, activeSettings, recentOrders, pendingCount, shippedCount] =
@@ -41,7 +45,8 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 };
 
 export default function Dashboard() {
-  const { stats, recentOrders } = useLoaderData<typeof loader>();
+  const { needsReauth, stats, recentOrders } = useLoaderData<typeof loader>();
+  if (needsReauth || !stats) return null;
 
   return (
     <Page title="Pre-Order Dashboard">
