@@ -1,5 +1,5 @@
 import { authenticate } from "../shopify.server";
-import type { ActionFunctionArgs } from "@remix-run/node";
+import type { ActionFunctionArgs } from "react-router";
 import prisma from "../db.server";
 
 export const action = async ({ request }: ActionFunctionArgs) => {

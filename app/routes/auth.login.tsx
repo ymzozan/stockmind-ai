@@ -1,5 +1,5 @@
-import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
-import { boundary } from "@shopify/shopify-app-remix/server";
+import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
+import { boundary } from "@shopify/shopify-app-react-router/server";
 import { login } from "../shopify.server";
 
 // OAuth redirects inside Shopify admin iframe fail because admin.shopify.com

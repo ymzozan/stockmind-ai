@@ -1,6 +1,6 @@
-import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
-import { json } from "@remix-run/node";
-import { useLoaderData, useSubmit, useNavigation } from "@remix-run/react";
+import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
+import { json } from "react-router";
+import { useLoaderData, useSubmit, useNavigation } from "react-router";
 import {
   Page,
   Card,
