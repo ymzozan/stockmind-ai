@@ -35,11 +35,13 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   } catch (err) {
     if (err instanceof Response && err.status === 302) {
       const location = err.headers.get("Location") ?? "";
-      const appUrl = process.env.SHOPIFY_APP_URL || "";
-      // Intercept any redirect to an external domain (admin.shopify.com,
-      // accounts.shopify.com, etc.). Redirects back to our own domain
-      // (token-exchange bounces) are re-thrown so Remix follows them normally.
-      if (location.startsWith("https://") && !location.startsWith(appUrl)) {
+      // Intercept any redirect to Shopify's OAuth domains.
+      // Redirects back to our own app domain (token-exchange bounces) are
+      // re-thrown so Remix follows them normally inside the iframe.
+      if (
+        location.includes("admin.shopify.com") ||
+        location.includes("accounts.shopify.com")
+      ) {
         return exitIframeHtml(location);
       }
     }
