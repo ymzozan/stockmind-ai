@@ -1,14 +1,26 @@
 import type { HeadersFunction, LoaderFunctionArgs } from "react-router";
-import { redirect } from "react-router";
 import { Outlet, useLoaderData, useRouteError } from "react-router";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { AppProvider } from "@shopify/shopify-app-react-router/react";
-import polarisStyles from "@shopify/polaris/build/esm/styles.css?url";
+import { AppProvider as PolarisProvider } from "@shopify/polaris";
+import polarisTranslations from "@shopify/polaris/locales/en.json";
 import { authenticate } from "../shopify.server";
-import prisma from "../db.server";
 import { useEffect } from "react";
 
-export const links = () => [{ rel: "stylesheet", href: polarisStyles }];
+declare global {
+  interface Window {
+    __SHOPIFY_API_KEY__?: string;
+  }
+}
+
+function isShopifyRedirect(location: string) {
+  try {
+    const url = new URL(location);
+    return url.protocol === "https:" && ["admin.shopify.com", "accounts.shopify.com"].includes(url.hostname);
+  } catch {
+    return false;
+  }
+}
 
 declare global {
   namespace JSX {
@@ -39,20 +51,15 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     if (error instanceof Response && error.status < 400) {
       const location = error.headers.get("Location") ?? "";
       // Bounces back to our own domain (token-exchange): let React Router follow
-      if (!location.includes("admin.shopify.com") && !location.includes("accounts.shopify.com")) {
+      if (!isShopifyRedirect(location)) {
         throw error;
       }
       // Shopify OAuth redirect: navigate PARENT frame, not the iframe
       if (shop && apiKey) return { apiKey, exitIframeUrl: location };
     }
 
-    // 4xx / any other error: clear session once, then navigate parent to install
-    if (shop && apiKey) {
-      if (!reqUrl.searchParams.get("cleared")) {
-        await prisma.session.deleteMany({ where: { shop } }).catch(() => {});
-        reqUrl.searchParams.set("cleared", "1");
-        throw redirect(reqUrl.toString());
-      }
+    // Only a validated shop can be used to build a Shopify install link.
+    if (apiKey && /^[a-z0-9][a-z0-9-]*\.myshopify\.com$/i.test(shop)) {
       return { apiKey, exitIframeUrl: buildInstallUrl(shop, apiKey) };
     }
 
@@ -78,16 +85,14 @@ export default function App() {
 
   // Set apiKey globally so ErrorBoundary can use it if a child route errors
   if (typeof window !== "undefined") {
-    (window as Record<string, unknown>).__SHOPIFY_API_KEY__ = apiKey;
+    window.__SHOPIFY_API_KEY__ = apiKey;
   }
 
   if (exitIframeUrl) return <ExitIframe url={exitIframeUrl} />;
 
   return (
-    <AppProvider isEmbeddedApp apiKey={apiKey}>
-      <script
-        dangerouslySetInnerHTML={{ __html: `window.__SHOPIFY_API_KEY__=${JSON.stringify(apiKey)};` }}
-      />
+    <AppProvider embedded apiKey={apiKey}>
+      <PolarisProvider i18n={polarisTranslations}>
       <ui-nav-menu>
         <a href="/app" rel="home">Dashboard</a>
         <a href="/app/products">Products</a>
@@ -95,6 +100,7 @@ export default function App() {
         <a href="/app/settings">Settings</a>
       </ui-nav-menu>
       <Outlet />
+      </PolarisProvider>
     </AppProvider>
   );
 }
@@ -105,8 +111,8 @@ export function ErrorBoundary() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const shop = new URLSearchParams(window.location.search).get("shop");
-    const apiKey = (window as Record<string, unknown>).__SHOPIFY_API_KEY__ as string | undefined;
-    if (!shop || !apiKey) return;
+    const apiKey = window.__SHOPIFY_API_KEY__ as string | undefined;
+    if (!shop || !apiKey || !/^[a-z0-9][a-z0-9-]*\.myshopify\.com$/i.test(shop)) return;
     const installUrl = buildInstallUrl(shop, apiKey);
     try {
       window.parent.postMessage(

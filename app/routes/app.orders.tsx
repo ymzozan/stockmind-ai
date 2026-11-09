@@ -1,5 +1,5 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
-import { json } from "react-router";
+import { data as routeData } from "react-router";
 import { useLoaderData, useSubmit } from "react-router";
 import {
   Page,
@@ -26,7 +26,7 @@ const STATUS_COLORS: Record<string, "info" | "success" | "attention" | "warning"
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const auth = await withShopifyAuth(request);
-  if (!auth) return json({ needsReauth: true as const, orders: [] as never[], status: "ALL" });
+  if (!auth) return routeData({ needsReauth: true as const, orders: [] as never[], status: "ALL" });
   const { session } = auth;
   const url = new URL(request.url);
   const status = url.searchParams.get("status") || "ALL";
@@ -39,12 +39,12 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     orderBy: { createdAt: "desc" },
   });
 
-  return json({ needsReauth: false as const, orders, status });
+  return routeData({ needsReauth: false as const, orders, status });
 };
 
 export const action = async ({ request }: ActionFunctionArgs) => {
   const auth = await withShopifyAuth(request);
-  if (!auth) return json({ ok: false });
+  if (!auth) return routeData({ ok: false });
   const { session } = auth;
   const formData = await request.formData();
   const orderId = formData.get("orderId") as string;
@@ -55,7 +55,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     data: { status: newStatus, updatedAt: new Date() },
   });
 
-  return json({ ok: true });
+  return routeData({ ok: true });
 };
 
 export default function OrdersPage() {
@@ -93,7 +93,6 @@ export default function OrdersPage() {
           <DataTable
             columnContentTypes={["text", "text", "text", "numeric", "text", "text"]}
             headings={["Order #", "Customer", "Product", "Qty", "Total", "Status"]}
-            accessibilityLabel="Pre-orders list"
             rows={orders.map((order) => [
               `#${order.orderNumber}`,
               order.customerName,

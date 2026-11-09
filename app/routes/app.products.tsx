@@ -1,5 +1,5 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
-import { json } from "react-router";
+import { data as routeData } from "react-router";
 import { useLoaderData, useSubmit, useNavigation } from "react-router";
 import {
   Page,
@@ -13,9 +13,7 @@ import {
   BlockStack,
   InlineStack,
   Modal,
-  Form,
   FormLayout,
-  TextField,
   Select,
   Checkbox,
   EmptyState,
@@ -27,7 +25,7 @@ import prisma from "../db.server";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const auth = await withShopifyAuth(request);
-  if (!auth) return json({ needsReauth: true as const, products: [] as never[], settingsMap: {} as Record<string, never> });
+  if (!auth) return routeData({ needsReauth: true as const, products: [] as never[], settingsMap: {} as Record<string, never> });
   const { admin, session } = auth;
   const shop = session.shop;
 
@@ -59,12 +57,12 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     settings.map((s) => [s.productId, s])
   );
 
-  return json({ needsReauth: false as const, products, settingsMap });
+  return routeData({ needsReauth: false as const, products, settingsMap });
 };
 
 export const action = async ({ request }: ActionFunctionArgs) => {
   const auth = await withShopifyAuth(request);
-  if (!auth) return json({ ok: false });
+  if (!auth) return routeData({ ok: false });
   const { session } = auth;
   const shop = session.shop;
   const formData = await request.formData();
@@ -109,7 +107,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     });
   }
 
-  return json({ ok: true });
+  return routeData({ ok: true });
 };
 
 export default function ProductsPage() {
@@ -117,7 +115,6 @@ export default function ProductsPage() {
   const submit = useSubmit();
   const navigation = useNavigation();
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
-  if (needsReauth) return null;
 
   const handleToggle = useCallback((productId: string) => {
     const formData = new FormData();
@@ -125,6 +122,8 @@ export default function ProductsPage() {
     formData.append("productId", productId);
     submit(formData, { method: "post" });
   }, [submit]);
+
+  if (needsReauth) return null;
 
   return (
     <Page
@@ -175,14 +174,16 @@ export default function ProductsPage() {
                         {isEnabled && <Badge tone="success">Pre-Order Active</Badge>}
                       </InlineStack>
                     </BlockStack>
+                    <span onClick={(event) => event.stopPropagation()}>
                     <Button
-                      onClick={(e) => { e?.stopPropagation(); handleToggle(gid); }}
+                      onClick={() => handleToggle(gid)}
                       variant={isEnabled ? "secondary" : "primary"}
                       size="slim"
                       loading={navigation.state === "submitting"}
                     >
                       {isEnabled ? "Disable" : "Enable Pre-Order"}
                     </Button>
+                    </span>
                   </InlineStack>
                 </ResourceItem>
               );
@@ -207,38 +208,28 @@ export default function ProductsPage() {
           secondaryActions={[{ content: "Cancel", onAction: () => setSelectedProduct(null) }]}
         >
           <Modal.Section>
-            <Form id="settings-form" onSubmit={() => {}}>
+            <form id="settings-form" onSubmit={(event) => {
+              event.preventDefault();
+              submit(event.currentTarget, { method: "post" });
+              setSelectedProduct(null);
+            }}>
               <input type="hidden" name="intent" value="save" />
               <input type="hidden" name="productId" value={selectedProduct.id} />
               <FormLayout>
-                <TextField
-                  label="Button Text"
-                  name="buttonText"
-                  defaultValue={settingsMap[selectedProduct.id]?.buttonText || "Pre-Order Now"}
-                  autoComplete="off"
-                />
-                <TextField
-                  label="Badge Text"
-                  name="badgeText"
-                  defaultValue={settingsMap[selectedProduct.id]?.badgeText || "Pre-Order"}
-                  autoComplete="off"
-                />
-                <TextField
-                  label="Customer Message"
-                  name="message"
-                  multiline={3}
-                  defaultValue={settingsMap[selectedProduct.id]?.message || "This item is available for pre-order. Ships in 2-3 weeks."}
-                  autoComplete="off"
-                />
-                <TextField
-                  label="Discount % (optional)"
-                  name="discountPercent"
-                  type="number"
-                  defaultValue={String(settingsMap[selectedProduct.id]?.discountPercent || 0)}
-                  autoComplete="off"
-                />
+                <label>Button Text
+                  <input name="buttonText" defaultValue={settingsMap[selectedProduct.id]?.buttonText || "Pre-Order Now"} />
+                </label>
+                <label>Badge Text
+                  <input name="badgeText" defaultValue={settingsMap[selectedProduct.id]?.badgeText || "Pre-Order"} />
+                </label>
+                <label>Customer Message
+                  <textarea name="message" rows={3} defaultValue={settingsMap[selectedProduct.id]?.message || "This item is available for pre-order. Ships in 2-3 weeks."} />
+                </label>
+                <label>Discount % (optional)
+                  <input name="discountPercent" type="number" defaultValue={settingsMap[selectedProduct.id]?.discountPercent || 0} />
+                </label>
               </FormLayout>
-            </Form>
+            </form>
           </Modal.Section>
         </Modal>
       )}
