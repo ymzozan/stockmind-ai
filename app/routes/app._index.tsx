@@ -1,5 +1,5 @@
 import type { LoaderFunctionArgs } from "react-router";
-import { json } from "react-router";
+import { data as routeData } from "react-router";
 import { useLoaderData } from "react-router";
 import {
   Page,
@@ -21,7 +21,7 @@ const EMPTY = { needsReauth: true as const, stats: null, recentOrders: [] as nev
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const auth = await withShopifyAuth(request);
-  if (!auth) return json(EMPTY);
+  if (!auth) return routeData(EMPTY);
   const { session } = auth;
   const shop = session.shop;
 
@@ -38,7 +38,8 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       prisma.preOrder.count({ where: { shop, status: "SHIPPED" } }),
     ]);
 
-  return json({
+  return routeData({
+    needsReauth: false as const,
     stats: { totalSettings, activeSettings, pendingCount, shippedCount },
     recentOrders,
   });
@@ -94,7 +95,6 @@ export default function Dashboard() {
                   o.quantity,
                   o.status,
                 ])}
-                accessibilityLabel="Recent pre-orders"
               />
             )}
           </BlockStack>

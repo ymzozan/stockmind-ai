@@ -1,5 +1,5 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
-import { json } from "react-router";
+import { data as routeData } from "react-router";
 import { useLoaderData, useSubmit, useNavigation } from "react-router";
 import {
   Page,
@@ -19,8 +19,8 @@ import { withShopifyAuth } from "../shopify-auth.server";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const auth = await withShopifyAuth(request);
-  if (!auth) return json({ needsReauth: true as const, defaultButtonText: "", defaultBadgeText: "", defaultMessage: "", emailNotifications: false });
-  return json({ needsReauth: false as const,
+  if (!auth) return routeData({ needsReauth: true as const, defaultButtonText: "", defaultBadgeText: "", defaultMessage: "", emailNotifications: false });
+  return routeData({ needsReauth: false as const,
     defaultButtonText: "Pre-Order Now",
     defaultBadgeText: "Pre-Order",
     defaultMessage: "This item is available for pre-order. Ships in 2-3 weeks.",
@@ -30,8 +30,8 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
 export const action = async ({ request }: ActionFunctionArgs) => {
   const auth = await withShopifyAuth(request);
-  if (!auth) return json({ ok: false, saved: false });
-  return json({ ok: true, saved: true });
+  if (!auth) return routeData({ ok: false, saved: false });
+  return routeData({ ok: true, saved: true });
 };
 
 export default function SettingsPage() {

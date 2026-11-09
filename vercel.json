@@ -1,8 +1,10 @@
 {
-  "buildCommand": "npx prisma generate && npx prisma db push --accept-data-loss && npm run build",
+  "buildCommand": "npx prisma generate && if [ \"$VERCEL_ENV\" = production ]; then npx prisma db push; fi && npm run build",
   "installCommand": "npm install --include=dev",
   "framework": "react-router",
-  "regions": ["iad1"],
+  "regions": [
+    "iad1"
+  ],
   "headers": [
     {
       "source": "/(.*)",

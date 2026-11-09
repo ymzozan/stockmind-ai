@@ -8,7 +8,7 @@ function exitIframeHtml(url: string) {
 <body>
 <script>
 (function(){
-  var url=${JSON.stringify(url)};
+  var url=${JSON.stringify(url).replace(/</g, "\\u003c")};
   try{window.parent.postMessage(
     JSON.stringify({message:"Shopify.API.App.redirect",data:{location:url}}),
     "https://admin.shopify.com"
@@ -38,11 +38,9 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       // Intercept any redirect to Shopify's OAuth domains.
       // Redirects back to our own app domain (token-exchange bounces) are
       // re-thrown so Remix follows them normally inside the iframe.
-      if (
-        location.includes("admin.shopify.com") ||
-        location.includes("accounts.shopify.com")
-      ) {
-        return exitIframeHtml(location);
+      const url = URL.canParse(location) ? new URL(location) : null;
+      if (url?.protocol === "https:" && ["admin.shopify.com", "accounts.shopify.com"].includes(url.hostname)) {
+        return exitIframeHtml(url.href);
       }
     }
     throw err;

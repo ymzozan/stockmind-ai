@@ -12,7 +12,7 @@ function topFrameRedirect(url: string) {
 <head><title>Redirecting...</title></head>
 <body>
 <script type="text/javascript">
-  var target = ${JSON.stringify(url)};
+  var target = ${JSON.stringify(url).replace(/</g, "\\u003c")};
   try { window.top.location.href = target; } catch(e) { window.location.href = target; }
 </script>
 </body>
@@ -29,22 +29,15 @@ function topFrameRedirect(url: string) {
 }
 
 async function handleLogin(request: Request) {
-  let response: Response;
   try {
-    response = await login(request);
-  } catch (err) {
-    // v3.8+ shopify-app-remix throws the redirect instead of returning it
-    if (err instanceof Response && err.status === 302) {
-      response = err;
-    } else {
-      throw err;
+    return await login(request);
+  } catch (error) {
+    if (error instanceof Response && error.status === 302) {
+      const location = error.headers.get("Location");
+      if (location) return topFrameRedirect(location);
     }
+    throw error;
   }
-  if (response.status === 302) {
-    const location = response.headers.get("Location");
-    if (location) return topFrameRedirect(location);
-  }
-  return response;
 }
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
